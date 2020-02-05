@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import csv
+import datetime
 import requests
 from bs4 import BeautifulSoup
 
@@ -49,7 +50,7 @@ def get_magnet_link(video_url):
         return "magnet not found"
 
 
-def parse_page(url, videos):
+def parse_page(url, videos, number):
     soup = BeautifulSoup(requests.get(
         url, headers=send_headers).text, 'html.parser')
     articles = soup.find_all("article")
@@ -61,7 +62,9 @@ def parse_page(url, videos):
         video_url = "https://ilovejav.com" + articles[i].h4.a['href']
         # 进入视频页，获得种子链接
         video_magnet = get_magnet_link(video_url)
-        print("No." + str(i+1) + " " + video_title)
+        dt = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        print(dt + "\tNo." + str(number) + "\t" + video_title)
+        number += 1
         videos.append(
             {'Title': video_title, 'Video Page': video_url, "Torrent Link": video_magnet})
 
@@ -70,11 +73,12 @@ if __name__ == "__main__":
 
     max_page = get_max_page_index()  # 获得最大页数
     videos = []
+    number = 1
 
     for index in range(max_page):
         # 解析每一页
         index += 1
-        parse_page("https://ilovejav.com/?page=" + str(index), videos)
+        parse_page("https://ilovejav.com/?page=" + str(index), videos, number)
 
     csv_columns = ['Title', 'Video Page', 'Torrent Link']
 
