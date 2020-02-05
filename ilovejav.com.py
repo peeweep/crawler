@@ -61,7 +61,7 @@ def parse_page(url, videos):
         video_url = "https://ilovejav.com" + articles[i].h4.a['href']
         # 进入视频页，获得种子链接
         video_magnet = get_magnet_link(video_url)
-        print("Get: " + video_title)
+        print("No." + str(i+1) + " " + video_title)
         videos.append(
             {'Title': video_title, 'Video Page': video_url, "Torrent Link": video_magnet})
 
