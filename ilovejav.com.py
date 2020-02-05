@@ -54,7 +54,7 @@ def parse_page(url, videos, number):
     soup = BeautifulSoup(requests.get(
         url, headers=send_headers).text, 'html.parser')
     articles = soup.find_all("article")
-    print("parse " + url)
+    print("[START] " + url)
     for i in range(len(articles)):
         # 获得视频标题
         video_title = articles[i].h4.string
@@ -67,6 +67,7 @@ def parse_page(url, videos, number):
         number += 1
         videos.append(
             {'Title': video_title, 'Video Page': video_url, "Torrent Link": video_magnet})
+    return number
 
 
 if __name__ == "__main__":
@@ -78,7 +79,8 @@ if __name__ == "__main__":
     for index in range(max_page):
         # 解析每一页
         index += 1
-        parse_page("https://ilovejav.com/?page=" + str(index), videos, number)
+        number = parse_page("https://ilovejav.com/?page=" +
+                            str(index), videos, number)
 
     csv_columns = ['Title', 'Video Page', 'Torrent Link']
 
