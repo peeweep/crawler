@@ -55,7 +55,7 @@ def get_magnet_link(video_url, s):
         return soup.select('h1.entry-title:nth-child(4)')[0].a['href']
 
     else:
-        print(soup.select('h1.entry-title:nth-child(4)'))
+        # print(soup.select('h1.entry-title:nth-child(4)'))
         return "magnet not found"
 
 
