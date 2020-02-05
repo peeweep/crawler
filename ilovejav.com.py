@@ -50,7 +50,7 @@ def get_magnet_link(video_url):
         return "magnet not found"
 
 
-def parse_page(url, videos, number):
+def parse_page(url, videos):
     soup = BeautifulSoup(requests.get(
         url, headers=send_headers).text, 'html.parser')
     articles = soup.find_all("article")
@@ -63,24 +63,25 @@ def parse_page(url, videos, number):
         # 进入视频页，获得种子链接
         video_magnet = get_magnet_link(video_url)
         dt = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        print(dt + "\tNo." + str(number) + "\t" + video_title)
-        number += 1
-        videos.append(
-            {'Title': video_title, 'Video Page': video_url, "Torrent Link": video_magnet})
-    return number
+        try:
+            videos.append(
+                {'Title': video_title, 'Video Page': video_url, "Torrent Link": video_magnet})
+            print(dt + "\tNo." + str(len(videos)) + "\t" + video_title)
+        except Exception as e:
+            import logging
+            print("ERROR: Can't append \tNo." + str(len(videos)))
+            print('Reason:', e)
 
 
 if __name__ == "__main__":
 
     max_page = get_max_page_index()  # 获得最大页数
     videos = []
-    number = 1
 
     for index in range(max_page):
         # 解析每一页
         index += 1
-        number = parse_page("https://ilovejav.com/?page=" +
-                            str(index), videos, number)
+        parse_page("https://ilovejav.com/?page=" + str(index), videos)
 
     csv_columns = ['Title', 'Video Page', 'Torrent Link']
 
