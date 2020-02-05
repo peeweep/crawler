@@ -2,6 +2,7 @@
 import csv
 import datetime
 import requests
+import requests.sessions
 from bs4 import BeautifulSoup
 
 send_headers = {
@@ -31,10 +32,14 @@ def get_max_page_index():
     return pages[0]  # 4108
 
 
-def get_magnet_link(video_url):
-    soup = BeautifulSoup(requests.get(video_url).text, 'html.parser')
+def get_magnet_link(video_url, s):
+    soup = BeautifulSoup(requests.get(
+        video_url, cookies=s.cookies, headers=send_headers).text, 'html.parser')
     if 'magnet:?xt=urn:btih:' in str(soup.select('h1.entry-title:nth-child(4)')):
         return soup.select('h1.entry-title:nth-child(4) > a:nth-child(1)')[0]['href']
+
+    elif 'magnet:?xt=urn:btih:' in str(soup.select('h1.entry-title:nth-child(3)')):
+        return soup.select('h1.entry-title:nth-child(3) > a:nth-child(1)')[0]['href']
 
     elif "xpressdl.com" in str(soup.select('h1.entry-title:nth-child(4)')):
         xpressdl_magnet_link = soup.select(
@@ -46,13 +51,17 @@ def get_magnet_link(video_url):
             'h1.entry-title:nth-child(3) > a:nth-child(1)')[0]['href']
         return "https://xpressdlbase.s3.amazonaws.com/ilovejav-" + str(xpressdl_magnet_link).split('xpressdl.com/download/')[1] + ".torrent"
 
+    elif 'avgle.com' in str(soup.select('h1.entry-title:nth-child(4)')):
+        return soup.select('h1.entry-title:nth-child(4)')[0].a['href']
+
     else:
+        print(soup.select('h1.entry-title:nth-child(4)'))
         return "magnet not found"
 
 
-def parse_page(url, videos):
+def parse_page(url, videos, s):
     soup = BeautifulSoup(requests.get(
-        url, headers=send_headers).text, 'html.parser')
+        url, cookies=s.cookies, headers=send_headers).text, 'html.parser')
     articles = soup.find_all("article")
     print("[START] " + url)
     for i in range(len(articles)):
@@ -61,14 +70,14 @@ def parse_page(url, videos):
         # 获得视频页链接
         video_url = "https://ilovejav.com" + articles[i].h4.a['href']
         # 进入视频页，获得种子链接
-        video_magnet = get_magnet_link(video_url)
+        video_magnet = get_magnet_link(video_url, s)
         dt = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         try:
-            videos.append(
-                {'Title': video_title, 'Video Page': video_url, "Torrent Link": video_magnet})
+            videos.append({'Title': video_title,
+                           'Video Page': video_url,
+                           "Torrent Link": video_magnet})
             print(dt + "\tNo." + str(len(videos)) + "\t" + video_title)
         except Exception as e:
-            import logging
             print("ERROR: Can't append \tNo." + str(len(videos)))
             print('Reason:', e)
 
@@ -78,10 +87,22 @@ if __name__ == "__main__":
     max_page = get_max_page_index()  # 获得最大页数
     videos = []
 
-    for index in range(max_page):
+    user_email = input(' Input your email:\t')
+    user_password = input(' Input your passowrd:\t')
+
+    Data = {'action': 'signin', 'target': '',
+            'email': user_email, 'password': user_password}
+
+    # login session
+    s = requests.session()
+    signin_url = "https://ilovejav.com/signin"
+    login = s.post(signin_url, data=Data, headers=send_headers)
+
+    # for index in range(max_page):
+    for index in range(500, 501):
         # 解析每一页
         index += 1
-        parse_page("https://ilovejav.com/?page=" + str(index), videos)
+        parse_page("https://ilovejav.com/?page=" + str(index), videos, s)
 
     csv_columns = ['Title', 'Video Page', 'Torrent Link']
 
