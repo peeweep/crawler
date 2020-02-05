@@ -98,8 +98,7 @@ if __name__ == "__main__":
     signin_url = "https://ilovejav.com/signin"
     login = s.post(signin_url, data=Data, headers=send_headers)
 
-    # for index in range(max_page):
-    for index in range(500, 501):
+    for index in range(max_page):
         # 解析每一页
         index += 1
         parse_page("https://ilovejav.com/?page=" + str(index), videos, s)
