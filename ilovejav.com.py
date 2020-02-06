@@ -1,23 +1,15 @@
 #!/usr/bin/env python
-import csv
 import datetime
 import requests
 import requests.sessions
 from bs4 import BeautifulSoup
+import sqlite3
 
 send_headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:74.0) Gecko/20100101 Firefox/74.0",
     "Connection": "keep-alive",
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.5"}
-
-
-def dict2csv(dict, file):
-    with open(file, 'wb') as f:
-        w = csv.writer(f)
-        # write all keys on one row and all values on the next
-        w.writerow(str(dict.keys()))
-        w.writerow(str(dict.values()))
 
 
 def get_max_page_index():
@@ -36,30 +28,43 @@ def get_magnet_link(video_url, s):
     soup = BeautifulSoup(requests.get(
         video_url, cookies=s.cookies, headers=send_headers).text, 'html.parser')
     if 'magnet:?xt=urn:btih:' in str(soup.select('h1.entry-title:nth-child(4)')):
-        return soup.select('h1.entry-title:nth-child(4) > a:nth-child(1)')[0]['href']
+        video_magnet = soup.select(
+            'h1.entry-title:nth-child(4) > a:nth-child(1)')[0]['href']
+        print(video_magnet)
+        return video_magnet
 
     elif 'magnet:?xt=urn:btih:' in str(soup.select('h1.entry-title:nth-child(3)')):
-        return soup.select('h1.entry-title:nth-child(3) > a:nth-child(1)')[0]['href']
+        video_magnet = soup.select(
+            'h1.entry-title:nth-child(3) > a:nth-child(1)')[0]['href']
+        print(video_magnet)
+        return video_magnet
 
     elif "xpressdl.com" in str(soup.select('h1.entry-title:nth-child(4)')):
-        xpressdl_magnet_link = soup.select(
-            'h1.entry-title:nth-child(4) > a:nth-child(1)')[0]['href']
-        return "https://xpressdlbase.s3.amazonaws.com/ilovejav-" + str(xpressdl_magnet_link).split('xpressdl.com/download/')[1] + ".torrent"
+        video_magnet = "https://xpressdlbase.s3.amazonaws.com/ilovejav-" + \
+            str(soup.select('h1.entry-title:nth-child(4) > a:nth-child(1)')
+                [0]['href']).split('xpressdl.com/download/')[1] + ".torrent"
+        print(video_magnet)
+        return video_magnet
 
     elif "xpressdl.com" in str(soup.select('h1.entry-title:nth-child(3)')):
-        xpressdl_magnet_link = soup.select(
-            'h1.entry-title:nth-child(3) > a:nth-child(1)')[0]['href']
-        return "https://xpressdlbase.s3.amazonaws.com/ilovejav-" + str(xpressdl_magnet_link).split('xpressdl.com/download/')[1] + ".torrent"
+        video_magnet = "https://xpressdlbase.s3.amazonaws.com/ilovejav-" + \
+            str(soup.select('h1.entry-title:nth-child(3) > a:nth-child(1)')
+                [0]['href']).split('xpressdl.com/download/')[1] + ".torrent"
+        print(video_magnet)
+        return video_magnet
 
     elif 'avgle.com' in str(soup.select('h1.entry-title:nth-child(4)')):
-        return soup.select('h1.entry-title:nth-child(4)')[0].a['href']
+        video_magnet = soup.select('h1.entry-title:nth-child(4)')[0].a['href']
+        print(video_magnet)
+        return video_magnet
 
     else:
-        # print(soup.select('h1.entry-title:nth-child(4)'))
-        return "magnet not found"
+        magnet_not_found = "magnet not found"
+        print(magnet_not_found)
+        return str(soup.select('h1.entry-title:nth-child(4)'))
 
 
-def parse_page(url, videos, s):
+def parse_page(url, c, s, number):
     soup = BeautifulSoup(requests.get(
         url, cookies=s.cookies, headers=send_headers).text, 'html.parser')
     articles = soup.find_all("article")
@@ -72,20 +77,32 @@ def parse_page(url, videos, s):
         # 进入视频页，获得种子链接
         video_magnet = get_magnet_link(video_url, s)
         dt = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        number += 1
         try:
-            videos.append({'Title': video_title,
-                           'Video Page': video_url,
-                           "Torrent Link": video_magnet})
-            print(dt + "\tNo." + str(len(videos)) + "\t" + video_title)
+            c.execute("INSERT INTO ilovejav_com VALUES (" + str(number) + ", '" +
+                      video_title + "', '" + video_url + "', '" + video_magnet + "')")
+            print(dt + "\tNo." + str(number) + "\t" + video_title)
         except Exception as e:
-            print("ERROR: Can't append \tNo." + str(len(videos)))
+            print("ERROR: Can't append \tNo." + str(number))
             print('Reason:', e)
+    return number
 
 
 if __name__ == "__main__":
 
+    conn = sqlite3.connect(':memory:')
+    print("Opened database successfully")
+    c = conn.cursor()
+    # Create table
+    c.execute('''CREATE TABLE ilovejav_com (
+        ID INT,
+        TITLE TEXT,
+        URL TEXT,
+        TORRENT TEXT
+    );''')
+
     max_page = get_max_page_index()  # 获得最大页数
-    videos = []
+    number = 0
 
     user_email = input(' Input your email:\t')
     user_password = input(' Input your passowrd:\t')
@@ -101,18 +118,10 @@ if __name__ == "__main__":
     for index in range(max_page):
         # 解析每一页
         index += 1
-        parse_page("https://ilovejav.com/?page=" + str(index), videos, s)
+        number = parse_page("https://ilovejav.com/?page=" +
+                            str(index), c, s, number)
 
-    csv_columns = ['Title', 'Video Page', 'Torrent Link']
+    with sqlite3.connect('ilovejav.com.db') as new_db:
+        new_db.executescript("".join(conn.iterdump()))
 
-    csv_file = "ilovejav.com.csv"
-
-    try:
-        with open(csv_file, 'w') as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
-            writer.writeheader()
-            for data in videos:
-                writer.writerow(data)
-        print("write all data to " + csv_file)
-    except IOError:
-        print("I/O error")
+    conn.close()
